@@ -1,7 +1,7 @@
-apply plugin: 'java'
+apply plugin: 'java-library'
 
 
 dependencies {
-  compile('com.google.guava:guava:24.1-jre')
-  compile('com.google.code.gson:gson:2.8.5')
+  implementation 'com.google.guava:guava:24.1-jre'
+  implementation 'com.google.code.gson:gson:2.8.5'
 }

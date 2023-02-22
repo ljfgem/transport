@@ -9,8 +9,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.linkedin.transport.api.StdFactory;
 import com.linkedin.transport.api.data.StdArray;
-import com.linkedin.transport.api.data.StdBoolean;
 import com.linkedin.transport.api.data.StdBinary;
+import com.linkedin.transport.api.data.StdBoolean;
 import com.linkedin.transport.api.data.StdDouble;
 import com.linkedin.transport.api.data.StdFloat;
 import com.linkedin.transport.api.data.StdInteger;
@@ -20,8 +20,8 @@ import com.linkedin.transport.api.data.StdString;
 import com.linkedin.transport.api.data.StdStruct;
 import com.linkedin.transport.api.types.StdType;
 import com.linkedin.transport.trino.data.TrinoArray;
-import com.linkedin.transport.trino.data.TrinoBoolean;
 import com.linkedin.transport.trino.data.TrinoBinary;
+import com.linkedin.transport.trino.data.TrinoBoolean;
 import com.linkedin.transport.trino.data.TrinoDouble;
 import com.linkedin.transport.trino.data.TrinoFloat;
 import com.linkedin.transport.trino.data.TrinoInteger;
@@ -31,9 +31,9 @@ import com.linkedin.transport.trino.data.TrinoString;
 import com.linkedin.transport.trino.data.TrinoStruct;
 import io.airlift.slice.Slices;
 import io.trino.metadata.FunctionBinding;
-import io.trino.metadata.FunctionDependencies;
-import io.trino.metadata.Metadata;
 import io.trino.metadata.OperatorNotFoundException;
+import io.trino.operator.scalar.FunctionAssertions;
+import io.trino.spi.function.FunctionDependencies;
 import io.trino.spi.function.InvocationConvention;
 import io.trino.spi.function.OperatorType;
 import io.trino.spi.type.ArrayType;
@@ -45,7 +45,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.linkedin.transport.trino.StdUDFUtils.quoteReservedKeywords;
+import static com.linkedin.transport.trino.StdUDFUtils.*;
 import static io.trino.metadata.SignatureBinder.*;
 import static io.trino.sql.analyzer.TypeSignatureTranslator.*;
 
@@ -54,18 +54,18 @@ public class TrinoFactory implements StdFactory {
 
   final FunctionBinding functionBinding;
   final FunctionDependencies functionDependencies;
-  final Metadata metadata;
+  final FunctionAssertions functionAssertions;
 
   public TrinoFactory(FunctionBinding functionBinding, FunctionDependencies functionDependencies) {
     this.functionBinding = functionBinding;
     this.functionDependencies = functionDependencies;
-    this.metadata = null;
+    this.functionAssertions = null;
   }
 
-  public TrinoFactory(FunctionBinding functionBinding, Metadata metadata) {
+  public TrinoFactory(FunctionBinding functionBinding, FunctionAssertions functionAssertions) {
     this.functionBinding = functionBinding;
     this.functionDependencies = null;
-    this.metadata = metadata;
+    this.functionAssertions = functionAssertions;
   }
 
   @Override
@@ -138,11 +138,12 @@ public class TrinoFactory implements StdFactory {
 
   @Override
   public StdType createStdType(String typeSignature) {
-    if (metadata != null) {
-      return TrinoWrapper.createStdType(metadata.getType(applyBoundVariables(
-          parseTypeSignature(quoteReservedKeywords(typeSignature), ImmutableSet.of()),
+    if (functionAssertions != null) {
+      return TrinoWrapper.createStdType(functionAssertions.getTestingFunctionResolution().getPlannerContext().getTypeManager()
+          .getType(applyBoundVariables(parseTypeSignature(quoteReservedKeywords(typeSignature), ImmutableSet.of()),
           functionBinding)));
     }
+    assert functionDependencies != null;
     return TrinoWrapper.createStdType(functionDependencies.getType(
         applyBoundVariables(parseTypeSignature(quoteReservedKeywords(typeSignature), ImmutableSet.of()),
             functionBinding)));
@@ -152,10 +153,12 @@ public class TrinoFactory implements StdFactory {
       OperatorType operatorType,
       List<Type> argumentTypes,
       InvocationConvention invocationConvention) throws OperatorNotFoundException {
-    if (metadata != null) {
-      return metadata.getScalarFunctionInvoker(metadata.resolveOperator(operatorType, argumentTypes),
+    if (functionAssertions != null) {
+      return functionAssertions.getFunctionManager().getScalarFunctionImplementation(
+          functionAssertions.getTestingFunctionResolution().resolveOperator(operatorType, argumentTypes),
           invocationConvention).getMethodHandle();
     }
-    return functionDependencies.getOperatorInvoker(operatorType, argumentTypes, invocationConvention).getMethodHandle();
+    assert functionDependencies != null;
+    return functionDependencies.getOperatorImplementation(operatorType, argumentTypes, invocationConvention).getMethodHandle();
   }
 }

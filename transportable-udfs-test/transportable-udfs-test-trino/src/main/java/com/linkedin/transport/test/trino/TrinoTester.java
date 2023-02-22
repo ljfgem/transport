@@ -7,9 +7,9 @@ package com.linkedin.transport.test.trino;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import io.trino.metadata.BoundSignature;
+import io.trino.spi.function.BoundSignature;
 import io.trino.metadata.FunctionBinding;
-import io.trino.metadata.FunctionId;
+import io.trino.spi.function.FunctionId;
 import io.trino.operator.scalar.AbstractTestFunctions;
 import io.trino.spi.type.Type;
 import com.linkedin.transport.api.StdFactory;
@@ -57,9 +57,7 @@ public class TrinoTester extends AbstractTestFunctions implements SqlStdTester {
           new BoundSignature("test", UNKNOWN, ImmutableList.of()),
           ImmutableMap.of(),
           ImmutableMap.of());
-      _stdFactory = new TrinoFactory(
-          functionBinding,
-          this.functionAssertions.getMetadata());
+      _stdFactory = new TrinoFactory(functionBinding, functionAssertions);
     }
     return _stdFactory;
   }
